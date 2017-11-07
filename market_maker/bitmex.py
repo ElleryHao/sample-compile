@@ -75,7 +75,7 @@ class BitMEX(object):
         """Get market depth / orderbook."""
         return self.ws.market_depth(symbol)
 
-    def recent_trades(self):
+    def recent_trades(self,symbol):
         """Get recent trades.
 
         Returns
@@ -88,7 +88,8 @@ class BitMEX(object):
 
         """
         return self.ws.recent_trades()
-
+    def last_close(self):
+        return self.ws.last_close()[-1]
     #
     # Authentication required methods
     #
