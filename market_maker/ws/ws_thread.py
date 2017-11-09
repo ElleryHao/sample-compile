@@ -46,7 +46,7 @@ class BitMEXWebsocket():
 
         # We can subscribe right in the connection querystring, so let's build that.
         # Subscribe to all pertinent endpoints
-        subscriptions = [sub + ':' + symbol for sub in ["quote", "trade","tradeBin1m","orderBook10"]]
+        subscriptions = [sub + ':' + symbol for sub in ["quote", "trade","tradeBin5m","orderBook10"]]
         subscriptions += ["instrument"]  # We want all of them
         if self.shouldAuth:
             subscriptions += [sub + ':' + symbol for sub in ["order", "execution"]]
@@ -105,7 +105,7 @@ class BitMEXWebsocket():
         return {k: toNearest(float(v or 0), instrument['tickSize']) for k, v in iteritems(ticker)}
    
     def last_close(self):
-        return self.data['tradeBin1m']
+        return self.data['tradeBin5m']
    
     def funds(self):
         return self.data['margin'][0]

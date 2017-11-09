@@ -34,7 +34,7 @@ class HTTPTradeApi(object):
         self.close=[]
         self.api = TradeApi()
     def trade_get_bucketed(self,start):
-        trades = self.api.trade_get_bucketed(bin_size="1m",symbol="XBT",count=500,start_time=start)
+        trades = self.api.trade_get_bucketed(bin_size="5m",symbol="XBT",count=500,start_time=start)
         for trade in trades:
             self.close.append(trade.close)
             self.last=str(trade.timestamp)
@@ -236,7 +236,7 @@ class OrderManager:
         self.starting_qty = self.exchange.get_delta()
         self.running_qty = self.starting_qty
         self.http = HTTPTradeApi()
-        start = datetime.utcnow() - timedelta(minutes=500)
+        start = datetime.utcnow() - timedelta(minutes=2500)
         self.http.trade_get_bucketed(start)
 
     def reset(self):
@@ -258,12 +258,13 @@ class OrderManager:
         cost = position['avgCostPrice']
         if cost > recent_trade['price'] or cost <= 0:
             return 'no', []
-        if abs(float(cost) - float(recent_trade['price'])) / float(cost) >= settings.stop_target and position > 0:
+        if abs(float(cost) - float(recent_trade['price'])) / float(cost) >= settings.stop_target and self.running_qty > 0:
             try:
                 os.mkdir("./.stop_profit")
+                logger.info("stop profit")
             except:
                 pass
-            return "stopping", [{'price': recent_trade['price'], 'orderQty': self.running_qty, 'side': "Sell"}]
+            return "stopping", [{'price': recent_trade['price'], 'orderQty': abs(self.running_qty), 'side': "Sell"}]
         return "no", []
 
         # self.reset()
@@ -369,24 +370,25 @@ class OrderManager:
     def whatToDo(self):
         close = self.http.close
         recent_trade = self.exchange.recent_trades()
-        ma1 = settings.MA1 if settings.MA1 < settings.MA2 else settings.MA2
-        ma2 = settings.MA2 if settings.MA1 < settings.MA2 else settings.MA1
-        MA1 = ta.MA(np.array(close + [recent_trade['price']]), ma1)[-1]
-        MA2 = ta.MA(np.array(close + [recent_trade['price']]), ma2)[-1]
+        ema1 = settings.MA1 if settings.MA1 < settings.MA2 else settings.MA2
+        ema2 = settings.MA2 if settings.MA1 < settings.MA2 else settings.MA1
+        EMA1 = ta.EMA(np.array(close + [recent_trade['price']]), ema1)[-1]
+        EMA2 = ta.EMA(np.array(close + [recent_trade['price']]), ema2)[-1]
         recent_trade = self.exchange.recent_trades()
-        logger.info("MA%s: %s,MA%s: %s ,last trade: %s" % (ma1, MA1, ma2, MA2, recent_trade['price']))
-        if recent_trade['price'] < MA1 and MA1 < MA2:
+        logger.info("MA%s: %s,MA%s: %s ,last trade: %s" % (ema1, EMA1, ema2, EMA2, recent_trade['price']))
+        if recent_trade['price'] < EMA1 and EMA1 + 1.1 < EMA2:
             logger.info("do short")
             try:
                 os.rmdir("./.stop_profit")
             except:
                 pass
             return -1
-        elif recent_trade['price'] > MA1 and MA1 > MA2:
+        elif recent_trade['price'] > EMA1 and EMA1 > EMA2 + 1.1:
             logger.info("do long")
             return 1
 
         return 0
+    
 
     def begin_orders(self):
         to_create = []
